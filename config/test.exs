@@ -1,4 +1,4 @@
 use Mix.Config
 
-config :domainatrex, 
+config :domainatrex,
   custom_suffixes: ["localhost"]
