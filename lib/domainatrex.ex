@@ -6,6 +6,8 @@ defmodule Domainatrex do
   """
   @public_suffix_list_url 'https://raw.githubusercontent.com/publicsuffix/list/master/public_suffix_list.dat'
   @public_suffix_list nil
+  @localhost_re ~r/^[^.]*localhost:?\d*/
+  @ip_re ~r/\A\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\z/
 
   :inets.start()
   :ssl.start()
@@ -132,8 +134,30 @@ defmodule Domainatrex do
 
       iex> Domainatrex.parse("zen.s3.amazonaws.com")
       {:ok, %{domain: "amazonaws", subdomain: "zen.s3", tld: "com"}}
+
+      iex> Domainatrex.parse("http://localhost:3000")
+      {:ok, %{domain: "localhost", subdomain: "", tld: "", localhost: true}}
+
+      iex> Domainatrex.parse("localhost")
+      {:ok, %{domain: "localhost", subdomain: "", tld: "", localhost: true}}
+
+      iex> Domainatrex.parse("127.0.0.1")
+      {:ok, %{domain: "127.0.0.1", subdomain: "", tld: "", ip: true}}
   """
   def parse(url) do
+    cond do
+      url =~ @localhost_re ->
+        {:ok, %{tld: "", domain: "localhost", subdomain: "", localhost: true}}
+
+      url =~ @ip_re ->
+        {:ok, %{tld: "", domain: url, subdomain: "", ip: true}}
+
+      true ->
+        parse_public_domain(url)
+    end
+  end
+
+  defp parse_public_domain(url) do
     case String.length(url) > 1 && String.contains?(url, ".") do
       true ->
         adjusted_url = url |> String.split(".") |> Enum.reverse()
